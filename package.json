@@ -1,7 +1,7 @@
-{ "name":        "scoped-http-client"
+{ "name":        "corp-scoped-http-client"
 , "description": "http client request wrapper"
-, "version":     "0.9.7"
-, "author":      "technoweenie"
+, "version":     "0.1.1"
+, "author":      "mcjffld"
 , "engines" :    [ "node >= 0.8.0" ]
 , "homepage":    "https://github.com/technoweenie/node-scoped-http-client"
 , "main":        "./lib/index"
