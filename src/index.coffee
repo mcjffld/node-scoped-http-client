@@ -24,7 +24,12 @@ class ScopedClient
       if @options.auth
         headers['Authorization'] = 'Basic ' + new Buffer(@options.auth).toString('base64');
 
-      if process.env.HTTP_PROXY
+      internalhost = /(.*)\.(prod|corp|dmz|dqs)\.(pcln|priceline)\.(com)/i.test(@options.hostname)
+
+      console.log("internal host check: " + internalhost + " for " + @options.hostname)
+
+      if process.env.HTTP_PROXY and !internalhost
+
         regex = /(?:https?:\/\/)?(\w+(?:\.\w+)*)(?::(\d+))?/
         [proxy_url, proxy_host, proxy_port] = regex.exec(process.env.HTTP_PROXY)
         if @options.protocol == 'https:'
@@ -35,16 +40,29 @@ class ScopedClient
           )
 
 
-      port = @options.port ||
-        ScopedClient.defaultPort[@options.protocol] || 80
-      req = (if @options.protocol == 'https:' then https else http).request(
-        port:    (proxy_port if not tunnelingAgent?) || port
-        host:    (proxy_host if not tunnelingAgent?) || @options.hostname
-        method:  method
-        path:    "#{@options.protocol}//#{@options.hostname}#{@fullPath()}"
-        headers: headers
-        agent:   tunnelingAgent || false
-      )
+        port = @options.port ||
+          ScopedClient.defaultPort[@options.protocol] || 80
+        req = (if @options.protocol == 'https:' then https else http).request(
+          port:    (proxy_port if not tunnelingAgent?) || port
+          host:    (proxy_host if not tunnelingAgent?) || @options.hostname
+          method:  method
+          path:    "#{@options.protocol}//#{@options.hostname}#{@fullPath()}"
+          headers: headers
+          agent:   tunnelingAgent || false
+        )
+      else
+        port = @options.port ||
+          ScopedClient.defaultPort[@options.protocol] || 80
+        req = (if @options.protocol == 'https:' then https else http).request(
+          port:    port
+          host:    @options.hostname
+          method:  method
+          path:    @fullPath()
+          headers: headers
+          agent:   false
+        )
+
+
       if callback
         req.on 'error', callback
       req.write reqBody, @options.encoding if sendingData
