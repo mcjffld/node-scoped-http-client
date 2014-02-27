@@ -24,7 +24,7 @@ class ScopedClient
       if @options.auth
         headers['Authorization'] = 'Basic ' + new Buffer(@options.auth).toString('base64');
 
-      internalhost = /(.*)\.(prod|corp|dmz|dqs)\.(pcln|priceline)\.(com)/i.test(@options.hostname)
+      internalhost = /(.*)\.(prod|corp|dev|qa|dmz|dqs)\.(pcln|priceline)\.(com)/i.test(@options.hostname)
 
       console.log("internal host check: " + internalhost + " for " + @options.hostname)
 
