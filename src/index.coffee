@@ -24,11 +24,14 @@ class ScopedClient
       if @options.auth
         headers['Authorization'] = 'Basic ' + new Buffer(@options.auth).toString('base64');
 
-      internalhost = /(.*)\.(prod|corp|dev|qa|dmz|dqs)\.(pcln|priceline)\.(com)/i.test(@options.hostname)
+      no_proxy = false
 
-      console.log("internal host check: " + internalhost + " for " + @options.hostname)
+      if process.env.HUBOT_NO_PROXY_REGEXP
+        no_proxy_regexp = new RegExp(process.env.HUBOT_NO_PROXY_REGEXP,"i");
 
-      if process.env.HTTP_PROXY and !internalhost
+        no_proxy = no_proxy_regex.test(@options.hostname)
+
+      if process.env.HTTP_PROXY and !no_proxy
 
         regex = /(?:https?:\/\/)?(\w+(?:\.\w+)*)(?::(\d+))?/
         [proxy_url, proxy_host, proxy_port] = regex.exec(process.env.HTTP_PROXY)

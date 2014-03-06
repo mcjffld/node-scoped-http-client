@@ -1,4 +1,4 @@
-{ "name":        "corp-scoped-http-client"
+{ "name":        "node-scoped-http-client"
 , "description": "http client request wrapper"
 , "version":     "0.1.2"
 , "author":      "mcjffld"
