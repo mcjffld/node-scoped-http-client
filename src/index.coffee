@@ -29,7 +29,7 @@ class ScopedClient
       if process.env.HUBOT_NO_PROXY_REGEXP
         no_proxy_regexp = new RegExp(process.env.HUBOT_NO_PROXY_REGEXP,"i");
 
-        no_proxy = no_proxy_regex.test(@options.hostname)
+        no_proxy = no_proxy_regexp.test(@options.hostname)
 
       if process.env.HTTP_PROXY and !no_proxy
 
