@@ -26,11 +26,13 @@ class ScopedClient
 
       no_proxy = false
 
-      if process.env.HUBOT_NO_PROXY_REGEXP
-        no_proxy_regexp = new RegExp(process.env.HUBOT_NO_PROXY_REGEXP,"i");
-
-        no_proxy = no_proxy_regexp.test(@options.hostname)
-
+      if process.env.NO_PROXY
+        for r in process.env.NO_PROXY.split(",")
+          no_proxy_regexp = new RegExp(".*" + r,"i");
+          no_proxy = no_proxy_regexp.test(@options.hostname)
+          if (no_proxy) 
+            break
+            
       if process.env.HTTP_PROXY and !no_proxy
 
         regex = /(?:https?:\/\/)?(\w+(?:\.\w+)*)(?::(\d+))?/
