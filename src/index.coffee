@@ -1,13 +1,20 @@
-path = require 'path'
-http = require 'http'
-https= require 'https'
-url  = require 'url'
-qs   = require 'querystring'
+path  = require 'path'
+http  = require 'http'
+https = require 'https'
+url   = require 'url'
+qs    = require 'querystring'
 tunnel = require 'tunnel'
 
 class ScopedClient
+  # Those properties are in @options but they are either not passed to the
+  # request as options or some processing is made on them. They will not be
+  # added to the request's option param.
+  @nonPassThroughOptions = ['headers', 'hostname', 'encoding', 'auth', 'port',
+    'protocol', 'agent', 'query', 'host', 'path', 'pathname', 'slashes', 'hash']
+
   constructor: (url, options) ->
     @options = @buildOptions url, options
+    @passthroughOptions = reduce(extend({}, @options), ScopedClient.nonPassThroughOptions)
 
   request: (method, reqBody, callback) ->
     if typeof(reqBody) == 'function'
@@ -19,7 +26,8 @@ class ScopedClient
       sendingData  = reqBody and reqBody.length > 0
       headers.Host = @options.hostname
 
-      headers['Content-Length'] = reqBody.length if reqBody?
+      if reqBody?
+        headers['Content-Length'] = Buffer.byteLength(reqBody, @options.encoding)
 
       if @options.auth
         headers['Authorization'] = 'Basic ' + new Buffer(@options.auth).toString('base64');
@@ -47,26 +55,42 @@ class ScopedClient
 
         port = @options.port ||
           ScopedClient.defaultPort[@options.protocol] || 80
-        req = (if @options.protocol == 'https:' then https else http).request(
+
+        requestOptions = {
           port:    (proxy_port if not tunnelingAgent?) || port
           host:    (proxy_host if not tunnelingAgent?) || @options.hostname
           method:  method
           path:    "#{@options.protocol}//#{@options.hostname}#{@fullPath()}"
           headers: headers
           agent:   tunnelingAgent || false
-        )
+        }
+
+        req = (if @options.protocol == 'https:' then https else http).request(requestOptions)
+
+        if @options.timeout
+          req.setTimeout @options.timeout, () ->
+            req.abort()
       else
         port = @options.port ||
           ScopedClient.defaultPort[@options.protocol] || 80
-        req = (if @options.protocol == 'https:' then https else http).request(
+
+        requestOptions = {
           port:    port
           host:    @options.hostname
           method:  method
           path:    @fullPath()
           headers: headers
-          agent:   false
-        )
+          agent:   @options.agent
+        }
 
+        # Extends the previous request options with all remaining options
+        extend requestOptions, @passthroughOptions
+
+        req = (if @options.protocol == 'https:' then https else http).request(requestOptions)
+
+        if @options.timeout
+          req.setTimeout @options.timeout, () ->
+            req.abort()
 
       if callback
         req.on 'error', callback
@@ -85,6 +109,8 @@ class ScopedClient
 
           res.on 'end', ->
             callback null, res, body
+        req.on 'error', (error) ->
+          callback error, null, null
 
       req.end()
       @
@@ -95,7 +121,7 @@ class ScopedClient
     full   = this.join p
     full  += "?#{search}" if search.length > 0
     full
-  
+
   scope: (url, options, callback) ->
     override = @buildOptions url, options
     scoped   = new ScopedClient(@options)
@@ -109,7 +135,7 @@ class ScopedClient
       callback = options
     callback scoped if callback
     scoped
-  
+
   join: (suffix) ->
     p = @options.pathname || '/'
     if suffix and suffix.length > 0
@@ -119,7 +145,7 @@ class ScopedClient
         path.join p, suffix
     else
       p
-  
+
   path: (p) ->
     @options.pathname = @join p
     @
@@ -134,21 +160,25 @@ class ScopedClient
     else
       extend @options.query, key
     @
-  
+
   host: (h) ->
     @options.hostname = h if h and h.length > 0
     @
-  
+
   port: (p) ->
     if p and (typeof(p) == 'number' || p.length > 0)
       @options.port = p
     @
-  
+
   protocol: (p) ->
     @options.protocol = p if p && p.length > 0
     @
   encoding: (e = 'utf-8') ->
     @options.encoding = e
+    @
+
+  timeout: (time) ->
+    @options.timeout = time
     @
 
   auth: (user, pass) ->
@@ -197,9 +227,14 @@ ScopedClient.prototype.del = ScopedClient.prototype['delete']
 ScopedClient.defaultPort = {'http:':80, 'https:':443, http:80, https:443}
 
 extend = (a, b) ->
-  prop = null
   Object.keys(b).forEach (prop) ->
     a[prop] = b[prop]
+  a
+
+# Removes keys specified in second parameter from first parameter
+reduce = (a, b) ->
+  for propName in b
+    delete a[propName]
   a
 
 exports.create = (url, options) ->
